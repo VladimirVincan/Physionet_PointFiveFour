@@ -29,7 +29,7 @@ def remapLabels(batchArousalTargs, batchApneaHypopneaTargs, batchSleepStageTargs
     return batchArousalTargs, batchApneaHypopneaTargs, batchSleepStageTargs
 
 def loadRecords(extractedDataPath, recordIndices, reductionFactor, numRecords, recordLength, numChannels):
-    fp = np.memmap(extractedDataPath + '/Training_data.dat', dtype='float32', mode='r', shape=(numRecords, recordLength, numChannels+3))
+    fp = np.memmap(extractedDataPath + '/Training_/data.dat', dtype='float32', mode='r', shape=(numRecords, recordLength, numChannels+3))
 
     feats = torch.FloatTensor(np.array(fp[recordIndices, ::, 0:numChannels])).permute(0, 2, 1).detach().contiguous()
     arousalTargs = torch.LongTensor(np.array(fp[recordIndices, 0::reductionFactor, numChannels]).astype(np.int32)).contiguous()

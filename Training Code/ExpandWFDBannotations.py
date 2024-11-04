@@ -1,10 +1,15 @@
-from scipy.io import loadmat
+# from scipy.io import loadmat
+from mat73 import loadmat
 import numpy as np
 import os
 from torch.utils.data import Dataset
+import h5py
+import shutil
 
+import matplotlib
+matplotlib.use('TKAgg')
 import matplotlib.pyplot as plt
-plt.switch_backend('TKAgg')
+# plt.switch_backend('TKAgg')
 from wfdb import rdann
 
 """Expands the sleep stage and apnea/hypopnea annotation files from Physionet into numpy memmaps with one annotation per sample"""
@@ -12,17 +17,22 @@ from wfdb import rdann
 
 ########################################################################################################################
 # SET THESE BASED ON YOUR ENVIRONMENT
-arousalDataPath = 'path/to/arousal/.mat/annotations'
-dataPath = 'path/to/WFDB/annotation/files/from/physionet'
+# arousalDataPath = 'path/to/arousal/.mat/annotations'
+# dataPath = 'path/to/WFDB/annotation/files/from/physionet'
+arousalDataPath = '/mnt/lun1/physionet/dataset_PointFiveFour/arousal_mat_files'
+dataPath = '/mnt/lun1/physionet/dataset_PointFiveFour/arousal_files'
 
 # Paths to save the expanded annotations
-sleepStageFilePath = 'path/to/save/sleepStage/annotations/'
-sleepWakeFilePath = 'path/to/save/sleeWake/annotations/'
-apneaHypopneaFilePath = 'path/to/save/apneaHypopnea/annotations/'
-obstructiveApneaHypopneaFilePath = 'path/to/save/obstructiveApneaHypopnea/annotations/'
+sleepStageFilePath = '/mnt/lun1/physionet/dataset_PointFiveFour/sleepStage/'
+sleepWakeFilePath = '/mnt/lun1/physionet/dataset_PointFiveFour/sleepWake/'
+apneaHypopneaFilePath = '/mnt/lun1/physionet/dataset_PointFiveFour/apneaHypopnea'
+obstructiveApneaHypopneaFilePath = '/mnt/lun1/physionet/dataset_PointFiveFour/obstructiveApneaHypopnea'
 # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 # Load records list and define data extraction mode
-recordList = filter(lambda x: os.path.isdir(dataPath + x), os.listdir(dataPath))
+# recordList = list(filter(lambda x: os.path.join(dataPath, x).split('.')[0].split('.')[0], os.listdir(dataPath)))
+
+f = lambda x: '/' + x.split('.')[0]
+recordList = list(f(x) for x in os.listdir(dataPath))
 
 # apneaHypopneaMode = 'apneaHypopnea' was used for the final submitted models, 'obstructiveApneaHypopnea' was investigated but not used in the final work
 apneaHypopneaMode = 'apneaHypopnea' # apneaHypopnea is referred to all types of Apnea and Hypopnea
@@ -32,10 +42,11 @@ apneaHypopneaMode = 'apneaHypopnea' # apneaHypopnea is referred to all types of 
 # Convenience function to load annotations
 def loadAnnotations(recordName):
 
-    arousalAnnotations = loadmat(arousalDataPath + recordName + '-arousal.mat')['data']['arousals'][0][0]
+    # arousalAnnotations = loadmat(arousalDataPath + recordName + '-arousal.mat')['data']['arousals'][0][0]
+    arousalAnnotations = loadmat(arousalDataPath + recordName + '-arousal.mat')['data']['arousals']
     arousalAnnotations = np.squeeze(arousalAnnotations.astype(np.int32))
 
-    sleepZoneAnnotations = rdann(dataPath + recordName + '/' + recordName, 'arousal')
+    sleepZoneAnnotations = rdann(dataPath + recordName, 'arousal')
     return arousalAnnotations, sleepZoneAnnotations
 
 
@@ -53,7 +64,6 @@ class classificationDataset(Dataset):
         ind = recordList[item]
         ind = str(ind)
         arousalAnnotations, sleepZoneAnnotations = loadAnnotations(ind)
-
 
         numSamples = len(sleepZoneAnnotations.sample)
 
@@ -217,10 +227,20 @@ class classificationDataset(Dataset):
 # %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 ds = classificationDataset()
 
+if os.path.exists(apneaHypopneaFilePath):
+    shutil.rmtree(apneaHypopneaFilePath)
+if os.path.exists(sleepWakeFilePath):
+    shutil.rmtree(sleepWakeFilePath)
+if os.path.exists(sleepStageFilePath):
+    shutil.rmtree(sleepStageFilePath)
+os.makedirs(apneaHypopneaFilePath)
+os.makedirs(sleepWakeFilePath)
+os.makedirs(sleepStageFilePath)
+
+
 # Loop over each annotation file and save its expanded sleep/wake, sleep stage and apnea/hypopnea annotations
 for n in range(len(ds)):
     apneaHypopneaAnn, sleepWakeAnnotation, sleepStageAnnotation = ds[n]
-
 
     if apneaHypopneaMode == 'obstructiveApneaHypopnea':
         fp = np.memmap(obstructiveApneaHypopneaFilePath + 'obstructiveApneaHypopneaAnnotation_' + str(recordList[n]) + '.dat', dtype='int32', mode='w+',
@@ -228,46 +248,19 @@ for n in range(len(ds)):
         fp[:] = apneaHypopneaAnn[:]
         del fp
     elif apneaHypopneaMode == 'apneaHypopnea':
-        fp = np.memmap(apneaHypopneaFilePath + 'apneaHypopneaAnnotation_' + str(recordList[n]) + '.dat', dtype='int32', mode='w+',
+        fp = np.memmap(apneaHypopneaFilePath + str(recordList[n]) + '.dat', dtype='int32', mode='w+',
                        shape=apneaHypopneaAnn.shape)
         fp[:] = apneaHypopneaAnn[:]
         del fp
 
-    fp = np.memmap(sleepWakeFilePath + 'sleepWakeAnnotation_' + str(recordList[n]) + '.dat', dtype='int32', mode='w+',
+    fp = np.memmap(sleepWakeFilePath + str(recordList[n]) + '.dat', dtype='int32', mode='w+',
                    shape=sleepWakeAnnotation.shape)
     fp[:] = sleepWakeAnnotation[:]
     del fp
 
-    fp = np.memmap(sleepStageFilePath + 'sleepStageAnnotation_' + str(recordList[n]) + '.dat', dtype='int32', mode='w+',
+    fp = np.memmap(sleepStageFilePath + str(recordList[n]) + '.dat', dtype='int32', mode='w+',
                    shape=sleepStageAnnotation.shape)
     fp[:] = sleepStageAnnotation[:]
     del fp
 
     print('Annotations are extracted for record ' + str(n))
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

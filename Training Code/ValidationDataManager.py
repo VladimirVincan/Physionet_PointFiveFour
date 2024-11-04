@@ -138,7 +138,7 @@ class asyncValidationDataLoader:
         print('Loading Validation Data')
 
         # Load data
-        fp = np.memmap(self.extractedDataPath + '/Validation_data.dat', dtype='float32', mode='r', shape=(self.numRecords, self.recordLength, self.numChannels+3))
+        fp = np.memmap(self.extractedDataPath + '/Validation_/data.dat', dtype='float32', mode='r', shape=(self.numRecords, self.recordLength, self.numChannels+3))
         self.feats = torch.FloatTensor(np.array(fp[::, ::, 0:self.numChannels])).permute(0, 2, 1).detach().contiguous()
         self.arousalTargs = np.array(fp[::, ::self.reductionFactor, self.numChannels]).reshape(-1).astype(np.int32)
         self.apneaTargs = np.array(fp[::, ::self.reductionFactor, self.numChannels+1]).reshape(-1).astype(np.int32)

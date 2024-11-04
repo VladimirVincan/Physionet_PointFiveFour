@@ -1,11 +1,12 @@
 # Imports
-from scipy.io import loadmat
 from scipy.signal import fftconvolve
+# from scipy.io import loadmat
 import numpy as np
 import os
 import random
 import gc as garbageCollector
 from multiprocessing import Pool
+from mat73 import loadmat
 
 '''Script to extract preprocessed signals and save to temporary numpy memap files to be used for model training'''
 
@@ -48,8 +49,11 @@ def computeTrainValidationTestRecords(dataPath, foldName='Default'):
 
     #########
 
-    recordList = list(filter(lambda x: os.path.isdir(dataPath + x),
-                        os.listdir(dataPath)))
+    # recordList = list(filter(lambda x: os.path.isdir(dataPath + x),
+    #                     os.listdir(dataPath)))
+    f = lambda x: '/' + x.split('.')[0]
+    recordList = list(f(x) for x in os.listdir(dataPath))
+
     trainRecordList = [recordList[ind] for ind in trainIndices]
     validationRecordList = [recordList[ind] for ind in validationIndices]
     testRecordList = [recordList[ind] for ind in testIndices]
@@ -75,7 +79,8 @@ def computeUnseenRecords(dataPath):
 
 # Convenience function to load signals
 def loadSignals(recordName, dataPath):
-    signals = loadmat(dataPath + recordName + '/' + recordName + '.mat')
+    from scipy.io import loadmat
+    signals = loadmat(dataPath + recordName + '.mat')
     signals = signals['val']
     garbageCollector.collect()
 
@@ -84,15 +89,18 @@ def loadSignals(recordName, dataPath):
 # Convenience function to load annotations
 def loadAnnotations(recordName, arousalAnnotationPath, apneaHypopneaAnnotationPath, sleepWakeAnnotationPath):
 
-    arousalAnnotations = loadmat(arousalAnnotationPath + recordName + '-arousal.mat')['data']['arousals'][0][0]
+    # arousalAnnotations = loadmat(arousalAnnotationPath + recordName + '-arousal.mat')['data']['arousals'][0][0]
+    arousalAnnotations = loadmat(arousalAnnotationPath + recordName + '-arousal.mat')['data']['arousals']
     arousalAnnotations = np.squeeze(arousalAnnotations.astype(np.int32))
     garbageCollector.collect()
 
-    fp = np.memmap(apneaHypopneaAnnotationPath + 'apneaHypopneaAnnotation_' + str(recordName) + '.dat', dtype='int32', mode='r')
+    # fp = np.memmap(apneaHypopneaAnnotationPath + 'apneaHypopneaAnnotation_' + str(recordName) + '.dat', dtype='int32', mode='r')
+    fp = np.memmap(apneaHypopneaAnnotationPath + str(recordName) + '.dat', dtype='int32', mode='r')
     apneaHypopneaAnnotations = np.zeros(shape=fp.shape)
     apneaHypopneaAnnotations[:] = fp[:]
 
-    fp = np.memmap(sleepWakeAnnotationPath + 'sleepWakeAnnotation_' + str(recordName) + '.dat', dtype='int32',  mode='r')
+    # fp = np.memmap(sleepWakeAnnotationPath + 'sleepWakeAnnotation_' + str(recordName) + '.dat', dtype='int32',  mode='r')
+    fp = np.memmap(sleepWakeAnnotationPath + str(recordName) + '.dat', dtype='int32',  mode='r')
     sleepStageAnnotations = np.zeros(shape=fp.shape)
     sleepStageAnnotations[:] = fp[:]
 
@@ -228,11 +236,12 @@ def extractBatchedData(datasetName,
     sampleDataLimit = dataLimitInHours*3600*50
 
     extractDatasetFilePath = savePath + datasetName + '_'
+    os.makedirs(extractDatasetFilePath)
 
     if useMultiprocessing:
         pool = Pool(processes=numRecordsPerBatch)
 
-    fp = np.memmap(extractDatasetFilePath + 'data.dat', dtype='float32', mode='w+', shape=(len(recordList), sampleDataLimit, 15))
+    fp = np.memmap(extractDatasetFilePath + '/data.dat', dtype='float32', mode='w+', shape=(len(recordList), sampleDataLimit, 15))
 
     # Extract data in batches of numRecordsPerBatch
     for n in range(0, len(recordList), numRecordsPerBatch):
@@ -244,11 +253,16 @@ def extractBatchedData(datasetName,
         if (n+numRecordsPerBatch) > len(recordList):
             limit = len(recordList)
 
+        arousalAnnotationPath = '/mnt/lun1/physionet/dataset_PointFiveFour/arousal_mat_files'
+        apneaHypopneaAnnotationPath = '/mnt/lun1/physionet/dataset_PointFiveFour/apneaHypopnea'
+        sleepWakeAnnotationPath = '/mnt/lun1/physionet/dataset_PointFiveFour/sleepWake/'
+
         # Process and extract batch of records
         if useMultiprocessing:
             data = pool.map(extractWholeRecord, recordList[n:limit])
         else:
-            data = list(map(extractWholeRecord, recordList[n:limit]))
+            # data = list(map(extractWholeRecord, recordList[n:limit]))
+            data = [extractWholeRecord(x, dataPath, arousalAnnotationPath, apneaHypopneaAnnotationPath, sleepWakeAnnotationPath) for x in recordList[n:limit]]
 
         # Enforce dataLimitInHours hour length with chopping / zero padding for memory usage stability and effficiency in cuDNN
         for n in range(len(data)):
@@ -282,13 +296,10 @@ def extractBatchedData(datasetName,
 
     del fp
 
+
+dataPath = '/mnt/lun1/physionet/dataset_PointFiveFour/mat_files'
+savePath = '/mnt/lun1/physionet/dataset_PointFiveFour/'
+
 # Extract training and validation sets from backing store, YOU NEED TO COMPLETE THE REQURIED INPUTS BASED ON YOUR ENVIRONMENT
-extractBatchedData(useMultiprocessing=True, datasetName='Training', foldName='Auxiliary4', dataPath, savePath)
-extractBatchedData(useMultiprocessing=True, datasetName='Validation', foldName='Auxiliary4', dataPath, savePath)
-
-
-
-
-
-
-
+extractBatchedData(useMultiprocessing=False, datasetName='Training', foldName='Auxiliary4', dataPath=dataPath, savePath=savePath)
+extractBatchedData(useMultiprocessing=False, datasetName='Validation', foldName='Auxiliary4', dataPath=dataPath, savePath=savePath)

@@ -30,7 +30,7 @@ numChannels = 12
 ########################################################################################################################
 # Training and validation data asynchronous managers
 
-extractedDataPath = UPDATE BASED ON YOUR ENVIRONMENT
+extractedDataPath = '/mnt/lun1/physionet/dataset_PointFiveFour/train'
 trainingData = asyncTrainingDataLoader(extractedDataPath=extractedDataPath, reductionFactor=50, numChannels=numChannels)
 validationData = asyncValidationDataLoader(extractedDataPath=extractedDataPath, numRecords=100, reductionFactor=50, numChannels=numChannels)
 garbageCollector.collect()

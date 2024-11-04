@@ -141,7 +141,7 @@ def marginalize(x):
     # Compute marginal for sleep/wake predictions
     p_wake = p_joint[::, 0, ::]
     x3 = torch.cat((p_wake.unsqueeze(1), torch.log(1 - torch.exp(p_wake.unsqueeze(1)))), dim=1)
-    
+
     return x1, x2, x3
 
 class Sleep_model_MultiTarget(nn.Module):
@@ -195,7 +195,7 @@ class Sleep_model_MultiTarget(nn.Module):
         x = Functional.max_pool1d(x, kernel_size=5)
         x = self.dsMod3(x)
         x = Functional.max_pool1d(x, kernel_size=5)
-        
+
         # Dilated Densenet
         x = self.denseMod1(x)
         x = self.denseMod2(x)
@@ -208,7 +208,7 @@ class Sleep_model_MultiTarget(nn.Module):
         x = self.denseMod9(x)
         x = self.denseMod10(x)
         x = self.denseMod11(x)
-        
+
         # Bidirectional skip LSTM and convert joint predictions to marginal predictions
         x = self.skipLSTM(x)
         x1, x2, x3 = marginalize(x)
@@ -219,15 +219,3 @@ class Sleep_model_MultiTarget(nn.Module):
             x3 = torch.exp(x3)
 
         return (x1, x2, x3)
-
-
-
-
-
-
-
-
-
-
-
-
