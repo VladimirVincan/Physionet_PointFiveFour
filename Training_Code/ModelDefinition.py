@@ -22,7 +22,7 @@ class Normalizer(nn.Module):
 
     def forward(self, x):
 
-        # Apply channel wise normalization
+
         if self.channelNorm:
             x = (x-torch.mean(x, dim=1, keepdim=True)) / (torch.std(x, dim=1, keepdim=True) + 0.00001)
 
@@ -64,7 +64,7 @@ class SeperableDenseNetUnit(nn.Module):
                                padding=0, dilation=1)
 
         self.conv3 = nn.Conv1d(in_channels=4*out_channels, out_channels=4*out_channels, groups=4*out_channels, kernel_size=kernelSize,
-                               padding=(kernelSize + ((kernelSize - 1) * (dilation - 1)) - 1) / 2, dilation=dilation)
+                               padding=(kernelSize + ((kernelSize - 1) * (dilation - 1)) - 1) // 2, dilation=dilation)
         self.conv4 = nn.Conv1d(in_channels=4*out_channels, out_channels=out_channels, groups=1, kernel_size=1,
                                padding=0, dilation=1)
 
@@ -77,21 +77,13 @@ class SeperableDenseNetUnit(nn.Module):
         self.norm2 = Normalizer(numChannels=out_channels, channelNorm=channelNorm)
 
     def forward(self, x):
-        print(x.shape)
         # Apply first convolution block
         y = self.conv2(self.conv1(x))
-        print(x.shape)
-        y = self.conv1(x)
-        print(x.shape)
         y = self.norm1(y)
         y = Functional.selu(y)
 
-        print(x.shape)
         # Apply second convolution block
-        y = self.conv3(y)
-        print(x.shape)
-        y = self.conv4(y)
-        print(x.shape)
+        y = self.conv4(self.conv3(y))
         y = self.norm2(y)
         y = Functional.selu(y)
 

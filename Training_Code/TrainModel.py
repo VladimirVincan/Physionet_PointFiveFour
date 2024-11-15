@@ -148,7 +148,7 @@ def trainModel(model):
             if (wakeAP > bestWakeAP):
                 bestWakeAP = wakeAP
 
-            f = open('./Models/Auxiliary1' + '/checkpointModel_' + str(i_epoch)
+            f = open('checkpointModel_' + str(i_epoch)
                      + '_' + "{:.3f}".format(arousalAUC)
                      + '_' + "{:.3f}".format(arousalAP)
                      + '_' + "{:.3f}".format(apneaAUC)
