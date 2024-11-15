@@ -20,8 +20,10 @@ Script which trains the model and saves it based on validation performance
 # Settings
 
 # Control parameters
-gpuSetting = 1     # Which GPU to use
-os.environ['CUDA_VISIBLE_DEVICES'] = str(gpuSetting)
+# gpuSetting = 1     # Which GPU to use
+# os.environ['CUDA_VISIBLE_DEVICES'] = str(gpuSetting)
+device = torch.device('cuda')
+print(device)
 
 foldName = 'Auxiliary1'
 
@@ -30,7 +32,8 @@ numChannels = 12
 ########################################################################################################################
 # Training and validation data asynchronous managers
 
-extractedDataPath = '/mnt/lun1/physionet/dataset_PointFiveFour/train'
+# extractedDataPath = '/mnt/lun1/physionet/dataset_PointFiveFour/train'
+extractedDataPath = '/data/physionet/dataset_PointFiveFour/'
 trainingData = asyncTrainingDataLoader(extractedDataPath=extractedDataPath, reductionFactor=50, numChannels=numChannels)
 validationData = asyncValidationDataLoader(extractedDataPath=extractedDataPath, numRecords=100, reductionFactor=50, numChannels=numChannels)
 garbageCollector.collect()

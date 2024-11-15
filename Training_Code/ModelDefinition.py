@@ -77,13 +77,21 @@ class SeperableDenseNetUnit(nn.Module):
         self.norm2 = Normalizer(numChannels=out_channels, channelNorm=channelNorm)
 
     def forward(self, x):
+        print(x.shape)
         # Apply first convolution block
         y = self.conv2(self.conv1(x))
+        print(x.shape)
+        y = self.conv1(x)
+        print(x.shape)
         y = self.norm1(y)
         y = Functional.selu(y)
 
+        print(x.shape)
         # Apply second convolution block
-        y = self.conv4(self.conv3(y))
+        y = self.conv3(y)
+        print(x.shape)
+        y = self.conv4(y)
+        print(x.shape)
         y = self.norm2(y)
         y = Functional.selu(y)
 
